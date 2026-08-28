@@ -8,38 +8,32 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const fence = "---"
-
-// Extract returns the YAML block delimited by the leading `---` fence. Both
-// fences must be a line of their own, so a `---` inside the body does not end
-// the front-matter.
+// Extract returns the YAML block delimited by the leading `---` fence.
 func Extract(content string) (string, error) {
-	content = strings.TrimPrefix(content, "\ufeff")
-	lines := strings.Split(content, "\n")
-	if trimLine(lines[0]) != fence {
+	if !strings.HasPrefix(content, "---") {
 		return "", fmt.Errorf("missing YAML front-matter")
 	}
 
-	for i := 1; i < len(lines); i++ {
-		if trimLine(lines[i]) == fence {
-			return strings.Join(lines[1:i], "\n"), nil
-		}
+	rest := content[len("---"):]
+	switch {
+	case strings.HasPrefix(rest, "\r\n"):
+		rest = rest[2:]
+	case strings.HasPrefix(rest, "\n"):
+		rest = rest[1:]
+	default:
+		return "", fmt.Errorf("missing YAML front-matter")
 	}
-	return "", fmt.Errorf("unclosed YAML front-matter")
-}
 
-func trimLine(line string) string {
-	return strings.TrimRight(line, " \t\r")
+	end := strings.Index(rest, "\n---")
+	if end < 0 {
+		return "", fmt.Errorf("unclosed YAML front-matter")
+	}
+	return rest[:end], nil
 }
 
 // Parse returns the top-level fields of a YAML mapping, keeping the raw nodes so
-// that callers can distinguish a missing field from an explicit null. An empty
-// block yields no fields, which the caller reports as missing required fields.
+// that callers can distinguish a missing field from an explicit null.
 func Parse(yamlContent string) (map[string]yaml.Node, error) {
-	if strings.TrimSpace(yamlContent) == "" {
-		return map[string]yaml.Node{}, nil
-	}
-
 	var root yaml.Node
 	if err := yaml.Unmarshal([]byte(yamlContent), &root); err != nil {
 		return nil, fmt.Errorf("invalid YAML front-matter: %w", err)
@@ -58,18 +52,9 @@ func Parse(yamlContent string) (map[string]yaml.Node, error) {
 		if _, ok := fields[key]; ok {
 			return nil, fmt.Errorf("duplicate field %q", key)
 		}
-		fields[key] = Resolve(*root.Content[i+1])
+		fields[key] = *root.Content[i+1]
 	}
 	return fields, nil
-}
-
-// Resolve follows an alias node to the anchor it points at, so that a field
-// written as `title: *anchor` is checked as the value it stands for.
-func Resolve(node yaml.Node) yaml.Node {
-	for node.Kind == yaml.AliasNode && node.Alias != nil {
-		node = *node.Alias
-	}
-	return node
 }
 
 // ParseFile extracts and parses the front-matter of a Markdown document.

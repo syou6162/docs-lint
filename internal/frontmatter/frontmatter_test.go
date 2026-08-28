@@ -37,26 +37,6 @@ func TestExtract(t *testing.T) {
 			content: "---\nid: a\n",
 			wantErr: "unclosed YAML front-matter",
 		},
-		{
-			name:    "horizontal rule in the body does not close the front-matter",
-			content: "---\nid: a\n--- junk\n",
-			wantErr: "unclosed YAML front-matter",
-		},
-		{
-			name:    "trailing space on the opening fence",
-			content: "---  \nid: a\n---\n",
-			want:    "id: a",
-		},
-		{
-			name:    "empty front-matter",
-			content: "---\n---\n# title\n",
-			want:    "",
-		},
-		{
-			name:    "byte order mark",
-			content: "\ufeff---\nid: a\n---\n",
-			want:    "id: a",
-		},
 	}
 
 	for _, test := range tests {
@@ -88,26 +68,6 @@ func TestParse(t *testing.T) {
 	}
 	if got := fields["id"].Value; got != "a" {
 		t.Errorf("id = %q, want %q", got, "a")
-	}
-}
-
-func TestParseEmpty(t *testing.T) {
-	fields, err := Parse("")
-	if err != nil {
-		t.Fatalf("Parse() error = %v", err)
-	}
-	if len(fields) != 0 {
-		t.Errorf("len(fields) = %d, want 0", len(fields))
-	}
-}
-
-func TestParseResolvesAlias(t *testing.T) {
-	fields, err := Parse("id: &anchor a\ntitle: *anchor\n")
-	if err != nil {
-		t.Fatalf("Parse() error = %v", err)
-	}
-	if got := fields["title"].Value; got != "a" {
-		t.Errorf("title = %q, want %q", got, "a")
 	}
 }
 

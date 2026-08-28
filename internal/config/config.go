@@ -8,7 +8,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/bmatcuk/doublestar/v4"
 	"gopkg.in/yaml.v3"
 )
 
@@ -52,7 +51,6 @@ type Field struct {
 }
 
 // Regexp returns the compiled Pattern, or nil when no pattern is configured.
-// Patterns are compiled by Parse, so a Config built by hand has none.
 func (f Field) Regexp() *regexp.Regexp {
 	return f.pattern
 }
@@ -79,10 +77,6 @@ func Load(path string) (*Config, error) {
 // Parse validates a config document. Unknown keys are rejected so that typos in
 // a rule definition fail loudly instead of silently disabling a check.
 func Parse(data []byte) (*Config, error) {
-	if strings.TrimSpace(string(data)) == "" {
-		return nil, fmt.Errorf("invalid config: file is empty")
-	}
-
 	var cfg Config
 	dec := yaml.NewDecoder(strings.NewReader(string(data)))
 	dec.KnownFields(true)
@@ -124,16 +118,6 @@ func (r *Rule) validate() error {
 	if len(r.Fields) == 0 {
 		return fmt.Errorf("fields must not be empty")
 	}
-	for _, group := range []struct {
-		key      string
-		patterns []string
-	}{{"include", r.Include}, {"exclude", r.Exclude}} {
-		for _, pattern := range group.patterns {
-			if !doublestar.ValidatePattern(pattern) {
-				return fmt.Errorf("%s: pattern %q is invalid", group.key, pattern)
-			}
-		}
-	}
 	if r.FilenameField != "" {
 		field, ok := r.Fields[r.FilenameField]
 		if !ok {
@@ -141,9 +125,6 @@ func (r *Rule) validate() error {
 		}
 		if field.Type != TypeString {
 			return fmt.Errorf("filename_field %q must be of type string", r.FilenameField)
-		}
-		if !field.Required {
-			return fmt.Errorf("filename_field %q must be required", r.FilenameField)
 		}
 	}
 
@@ -179,11 +160,6 @@ func (r *Rule) validateField(name string, field *Field) error {
 	}
 	if len(field.Enum) > 0 && field.Type != TypeString {
 		return fmt.Errorf("enum is only supported for type string")
-	}
-	for _, value := range field.Enum {
-		if value == "" {
-			return fmt.Errorf("enum must not contain an empty value")
-		}
 	}
 
 	if field.References != "" {

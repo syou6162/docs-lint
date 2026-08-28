@@ -20,12 +20,9 @@ flags:
         path to the config file (default: docs-lint.yaml)
 ```
 
-- `dir` は検査対象のルート（省略時はカレントディレクトリ）。配下の `.md`（拡張子の大小文字は区別しない）を再帰的に見る。`.git` は辿らず、ディレクトリの symlink も辿らない
-- `-config` を省略した場合は `docs-lint.yaml` / `docs-lint.yml` / `.docs-lint.yaml` / `.docs-lint.yml` をこの順で探す。設定の探索はカレントディレクトリ基準、検査対象は `dir` 基準なので、別ディレクトリを検査するときは `-config` を明示する
-- 違反を `path: message` の形式で標準出力に並べる
-- exit code は、違反があれば 1、設定エラー・使い方の誤り・IO エラーなら 2、問題なしなら 0
-- front-matter の開始・終了 fence は行全体が `---` である必要がある（本文中の `---` で終了扱いにしない）
-- 1 ファイルが複数のルールに一致する場合、各ルールが独立に適用される。`allow_unknown_fields: false` のルールが 2 つ一致すると互いのフィールドを未知と報告するので、`include` / `exclude` は重複しないように書く
+- `dir` は検査対象のルート（省略時はカレントディレクトリ）。配下の `.md` を再帰的に見る
+- `-config` を省略した場合は `docs-lint.yaml` / `docs-lint.yml` / `.docs-lint.yaml` をこの順で探す
+- 違反を `path: message` の形式で標準出力に並べ、1 件以上あれば exit 1
 
 ## 設定
 
@@ -86,7 +83,7 @@ rules:
 | `self_reference_allowed` | `false` | `references` で自分自身の値を参照してよいか |
 | `acyclic` | `false` | `references` の参照グラフに閉路が無いこと |
 
-設定ファイルは未知のキーを拒否し、glob と正規表現は読み込み時に検証する。ルール定義の綴り間違いで検査が黙って無効になるのを防ぐため。
+設定ファイルは未知のキーを拒否する。ルール定義の綴り間違いで検査が黙って無効になるのを防ぐため。
 
 ## CI
 
@@ -102,4 +99,3 @@ rules:
 - **ルールを設定で書く**。Go コードで書けるようにすると、各リポジトリが再び Go の依存とテストを抱えることになるため、呼び出し側は YAML だけで済むようにしている
 - **front-matter に限定しない名前にしている**。本文の必須見出しやファイル名規約の検査を足しても名前が嘘にならないようにするため
 - **本文の検査はまだ持っていない**。front-matter の検査だけで既存の運用（roadmap のタスクファイル）を置き換えられるため、必要になってから足す
-- **docs-lint 自身も docs-lint で検査する**。リポジトリ root の `docs-lint.yaml` が `docs/decisions/` を対象にしており、CI で `go run ./cmd/docs-lint` を実行している

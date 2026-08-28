@@ -6,7 +6,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
 
@@ -15,15 +14,7 @@ import (
 )
 
 // defaultConfigPaths are tried in order when -config is not given.
-var defaultConfigPaths = []string{"docs-lint.yaml", "docs-lint.yml", ".docs-lint.yaml", ".docs-lint.yml"}
-
-// Exit codes: violations and usage/IO errors are distinguished so that CI can
-// tell a failing document from a broken invocation.
-const (
-	exitOK        = 0
-	exitViolation = 1
-	exitError     = 2
-)
+var defaultConfigPaths = []string{"docs-lint.yaml", "docs-lint.yml", ".docs-lint.yaml"}
 
 func main() {
 	configPath := flag.String("config", "", "path to the config file (default: docs-lint.yaml)")
@@ -33,45 +24,40 @@ func main() {
 	}
 	flag.Parse()
 
-	if flag.NArg() > 1 {
-		fmt.Fprintf(os.Stderr, "docs-lint: expected at most one directory, got %d arguments\n", flag.NArg())
-		flag.Usage()
-		os.Exit(exitError)
-	}
 	root := "."
-	if flag.NArg() == 1 {
+	if flag.NArg() > 0 {
 		root = flag.Arg(0)
 	}
 
-	os.Exit(run(*configPath, root, os.Stdout, os.Stderr))
+	if err := run(*configPath, root); err != nil {
+		fmt.Fprintf(os.Stderr, "docs-lint: %v\n", err)
+		os.Exit(1)
+	}
 }
 
-func run(configPath, root string, stdout, stderr io.Writer) int {
+func run(configPath, root string) error {
 	path, err := resolveConfigPath(configPath)
 	if err != nil {
-		fmt.Fprintf(stderr, "docs-lint: %v\n", err)
-		return exitError
+		return err
 	}
 
 	cfg, err := config.Load(path)
 	if err != nil {
-		fmt.Fprintf(stderr, "docs-lint: %v\n", err)
-		return exitError
+		return err
 	}
 
 	issues, err := lint.Run(root, cfg)
 	if err != nil {
-		fmt.Fprintf(stderr, "docs-lint: %v\n", err)
-		return exitError
+		return err
 	}
 
 	for _, issue := range issues {
-		fmt.Fprintln(stdout, issue)
+		fmt.Println(issue)
 	}
 	if len(issues) > 0 {
-		return exitViolation
+		os.Exit(1)
 	}
-	return exitOK
+	return nil
 }
 
 func resolveConfigPath(configPath string) (string, error) {
