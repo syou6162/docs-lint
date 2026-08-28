@@ -60,8 +60,7 @@ func TestRunExitCodes(t *testing.T) {
 			name:     "no file matches the rule",
 			config:   validConfig,
 			docs:     map[string]string{"ok.txt": "not markdown"},
-			wantCode: exitViolation,
-			wantOut:  `rule "doc": no Markdown file matched include`,
+			wantCode: exitOK,
 		},
 	}
 

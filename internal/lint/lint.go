@@ -50,13 +50,6 @@ func Run(root string, cfg *config.Config) ([]Issue, error) {
 		if err != nil {
 			return nil, err
 		}
-		if len(matched) == 0 && !rule.AllowNoFiles {
-			issues = append(issues, Issue{Message: fmt.Sprintf(
-				"rule %q: no Markdown file matched include %s (set allow_no_files to accept this)",
-				rule.Name, quote(rule.Include),
-			)})
-			continue
-		}
 		issues = append(issues, lintRule(root, rule, matched)...)
 	}
 

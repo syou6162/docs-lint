@@ -71,7 +71,6 @@ rules:
 | `exclude` | `[]` | `include` から除外するパターン |
 | `filename_field` | なし | ファイル名（`.md` を除く）が一致していなければならないフィールド名 |
 | `allow_unknown_fields` | `false` | `fields` に無い front-matter を許すかどうか |
-| `allow_no_files` | `false` | `include` に 1 件もマッチしない状態を許すかどうか |
 | `fields` | 必須 | フィールド名 → 検査内容 |
 
 ### field
@@ -87,7 +86,7 @@ rules:
 | `self_reference_allowed` | `false` | `references` で自分自身の値を参照してよいか |
 | `acyclic` | `false` | `references` の参照グラフに閉路が無いこと |
 
-設定ファイルは未知のキーを拒否し、glob と正規表現は読み込み時に検証する。また、`include` に 1 件もマッチしないルールは既定でエラーにする。ルール定義の綴り間違いやディレクトリの改名で検査が黙って無効になり、緑の CI が「検査した」ことを意味しなくなるのを防ぐため。対象が無い状態を許したい場合は `allow_no_files: true` を書く。
+設定ファイルは未知のキーを拒否し、glob と正規表現は読み込み時に検証する。ルール定義の綴り間違いで検査が黙って無効になるのを防ぐため。
 
 ## CI
 

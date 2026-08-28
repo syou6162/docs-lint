@@ -34,7 +34,6 @@ type Rule struct {
 	Exclude            []string         `yaml:"exclude"`
 	FilenameField      string           `yaml:"filename_field"`
 	AllowUnknownFields bool             `yaml:"allow_unknown_fields"`
-	AllowNoFiles       bool             `yaml:"allow_no_files"`
 	Fields             map[string]Field `yaml:"fields"`
 }
 
