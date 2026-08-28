@@ -1,0 +1,24 @@
+rules:
+  - name: decision
+    include:
+      - docs/decisions/**/*.md
+    filename_field: id
+    allow_unknown_fields: false
+    fields:
+      id:
+        type: string
+        required: true
+        pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"
+        unique: true
+      title:
+        type: string
+        required: true
+      status:
+        type: string
+        required: true
+        enum: [accepted, superseded]
+      supersedes:
+        type: string_array
+        required: false
+        references: id
+        acyclic: true

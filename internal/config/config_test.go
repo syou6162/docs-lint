@@ -135,6 +135,31 @@ func TestParseErrors(t *testing.T) {
 			config:  "rules:\n  - name: a\n    include: [\"*.md\"]\n    fields:\n      id:\n        type: string\n      parent:\n        type: string\n        references: id\n        acyclic: true\n",
 			wantErr: "acyclic is only supported for type string_array",
 		},
+		{
+			name:    "empty config",
+			config:  "\n",
+			wantErr: "file is empty",
+		},
+		{
+			name:    "invalid include pattern",
+			config:  "rules:\n  - name: a\n    include: [\"docs/[\"]\n    fields:\n      id:\n        type: string\n",
+			wantErr: `include: pattern "docs/[" is invalid`,
+		},
+		{
+			name:    "invalid exclude pattern",
+			config:  "rules:\n  - name: a\n    include: [\"*.md\"]\n    exclude: [\"docs/[\"]\n    fields:\n      id:\n        type: string\n",
+			wantErr: `exclude: pattern "docs/[" is invalid`,
+		},
+		{
+			name:    "filename_field not required",
+			config:  "rules:\n  - name: a\n    include: [\"*.md\"]\n    filename_field: id\n    fields:\n      id:\n        type: string\n",
+			wantErr: `filename_field "id" must be required`,
+		},
+		{
+			name:    "empty enum value",
+			config:  "rules:\n  - name: a\n    include: [\"*.md\"]\n    fields:\n      id:\n        type: string\n        enum: [\"\", high]\n",
+			wantErr: "enum must not contain an empty value",
+		},
 	}
 
 	for _, test := range tests {

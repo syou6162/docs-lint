@@ -23,6 +23,9 @@ type Issue struct {
 }
 
 func (i Issue) String() string {
+	if i.File == "" {
+		return i.Message
+	}
 	return fmt.Sprintf("%s: %s", i.File, i.Message)
 }
 
@@ -47,11 +50,14 @@ func Run(root string, cfg *config.Config) ([]Issue, error) {
 		if err != nil {
 			return nil, err
 		}
-		ruleIssues, err := lintRule(root, rule, matched)
-		if err != nil {
-			return nil, err
+		if len(matched) == 0 && !rule.AllowNoFiles {
+			issues = append(issues, Issue{Message: fmt.Sprintf(
+				"rule %q: no Markdown file matched include %s (set allow_no_files to accept this)",
+				rule.Name, quote(rule.Include),
+			)})
+			continue
 		}
-		issues = append(issues, ruleIssues...)
+		issues = append(issues, lintRule(root, rule, matched)...)
 	}
 
 	sort.Slice(issues, func(i, j int) bool {
@@ -83,7 +89,7 @@ func collectMarkdown(root string) ([]string, error) {
 			}
 			return nil
 		}
-		if filepath.Ext(path) != ".md" {
+		if !strings.EqualFold(filepath.Ext(path), ".md") {
 			return nil
 		}
 		rel, err := filepath.Rel(root, path)
@@ -136,14 +142,15 @@ func matchAny(patterns []string, file string) (bool, error) {
 	return false, nil
 }
 
-func lintRule(root string, rule config.Rule, files []string) ([]Issue, error) {
+func lintRule(root string, rule config.Rule, files []string) []Issue {
 	var issues []Issue
 	docs := make([]document, 0, len(files))
 
 	for _, file := range files {
 		data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(file)))
 		if err != nil {
-			return nil, err
+			issues = append(issues, Issue{File: file, Message: fmt.Sprintf("cannot be read: %v", err)})
+			continue
 		}
 
 		fields, err := frontmatter.ParseFile(string(data))
@@ -159,7 +166,7 @@ func lintRule(root string, rule config.Rule, files []string) ([]Issue, error) {
 
 	issues = append(issues, lintUnique(rule, docs)...)
 	issues = append(issues, lintReferences(rule, docs)...)
-	return issues, nil
+	return issues
 }
 
 func lintDocument(rule config.Rule, file string, fields map[string]yaml.Node) (document, []Issue) {
@@ -415,7 +422,8 @@ func sequenceValues(node yaml.Node, name string) ([]string, error) {
 		return nil, fmt.Errorf("%s must be an array of strings", name)
 	}
 	values := make([]string, 0, len(node.Content))
-	for _, item := range node.Content {
+	for _, raw := range node.Content {
+		item := frontmatter.Resolve(*raw)
 		if item.Kind != yaml.ScalarNode || item.Tag != "!!str" || item.Value == "" {
 			return nil, fmt.Errorf("%s must be an array of non-empty strings", name)
 		}
