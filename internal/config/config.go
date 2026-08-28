@@ -34,6 +34,8 @@ type Rule struct {
 	FilenameField      string           `yaml:"filename_field"`
 	AllowUnknownFields bool             `yaml:"allow_unknown_fields"`
 	Fields             map[string]Field `yaml:"fields"`
+
+	fieldOrder []string
 }
 
 // Field is the schema of a single front-matter field.
@@ -55,8 +57,12 @@ func (f Field) Regexp() *regexp.Regexp {
 	return f.pattern
 }
 
-// FieldNames returns the configured field names in a stable order.
+// FieldNames returns the field names in the order they are written in the
+// config, so that a document is reported by the first field that fails.
 func (r Rule) FieldNames() []string {
+	if len(r.fieldOrder) == len(r.Fields) {
+		return r.fieldOrder
+	}
 	names := make([]string, 0, len(r.Fields))
 	for name := range r.Fields {
 		names = append(names, name)
@@ -83,10 +89,55 @@ func Parse(data []byte) (*Config, error) {
 	if err := dec.Decode(&cfg); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
+	for i, order := range fieldOrders(data) {
+		if i < len(cfg.Rules) {
+			cfg.Rules[i].fieldOrder = order
+		}
+	}
 	if err := cfg.validate(); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 	return &cfg, nil
+}
+
+// fieldOrders returns, for each rule, the field names in document order.
+func fieldOrders(data []byte) [][]string {
+	var root yaml.Node
+	if err := yaml.Unmarshal(data, &root); err != nil {
+		return nil
+	}
+	if root.Kind == yaml.DocumentNode && len(root.Content) > 0 {
+		root = *root.Content[0]
+	}
+
+	rules := mappingValue(&root, "rules")
+	if rules == nil || rules.Kind != yaml.SequenceNode {
+		return nil
+	}
+
+	orders := make([][]string, 0, len(rules.Content))
+	for _, rule := range rules.Content {
+		var names []string
+		if fields := mappingValue(rule, "fields"); fields != nil {
+			for i := 0; i+1 < len(fields.Content); i += 2 {
+				names = append(names, fields.Content[i].Value)
+			}
+		}
+		orders = append(orders, names)
+	}
+	return orders
+}
+
+func mappingValue(node *yaml.Node, key string) *yaml.Node {
+	if node.Kind != yaml.MappingNode {
+		return nil
+	}
+	for i := 0; i+1 < len(node.Content); i += 2 {
+		if node.Content[i].Value == key {
+			return node.Content[i+1]
+		}
+	}
+	return nil
 }
 
 func (c *Config) validate() error {

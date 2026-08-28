@@ -71,6 +71,16 @@ func TestParse(t *testing.T) {
 	}
 }
 
+func TestParseNonMappingHasNoFields(t *testing.T) {
+	fields, err := Parse("- a\n- b\n")
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	if len(fields) != 0 {
+		t.Errorf("len(fields) = %d, want 0", len(fields))
+	}
+}
+
 func TestParseErrors(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -78,7 +88,6 @@ func TestParseErrors(t *testing.T) {
 		wantErr string
 	}{
 		{name: "duplicate field", content: "id: a\nid: b\n", wantErr: `duplicate field "id"`},
-		{name: "not a mapping", content: "- a\n- b\n", wantErr: "must be a YAML mapping"},
 		{name: "invalid yaml", content: "id: [a\n", wantErr: "invalid YAML front-matter"},
 	}
 

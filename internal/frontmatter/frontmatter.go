@@ -32,7 +32,8 @@ func Extract(content string) (string, error) {
 }
 
 // Parse returns the top-level fields of a YAML mapping, keeping the raw nodes so
-// that callers can distinguish a missing field from an explicit null.
+// that callers can distinguish a missing field from an explicit null. A document
+// that is not a mapping has no fields.
 func Parse(yamlContent string) (map[string]yaml.Node, error) {
 	var root yaml.Node
 	if err := yaml.Unmarshal([]byte(yamlContent), &root); err != nil {
@@ -42,11 +43,11 @@ func Parse(yamlContent string) (map[string]yaml.Node, error) {
 	if root.Kind == yaml.DocumentNode && len(root.Content) > 0 {
 		root = *root.Content[0]
 	}
+	fields := map[string]yaml.Node{}
 	if root.Kind != yaml.MappingNode {
-		return nil, fmt.Errorf("front-matter must be a YAML mapping")
+		return fields, nil
 	}
 
-	fields := map[string]yaml.Node{}
 	for i := 0; i+1 < len(root.Content); i += 2 {
 		key := root.Content[i].Value
 		if _, ok := fields[key]; ok {

@@ -95,67 +95,67 @@ func TestRunReportsFieldProblems(t *testing.T) {
 			name:    "missing front-matter",
 			file:    "docs/roadmap/backlog/a.md",
 			content: "# body\n",
-			want:    "docs/roadmap/backlog/a.md: missing YAML front-matter",
+			want:    "docs/roadmap/backlog/a.md: parse: missing YAML front-matter",
 		},
 		{
 			name:    "missing required field",
 			file:    "docs/roadmap/backlog/a.md",
 			content: "---\nid: a\ntitle: t\npriority: high\n---\n",
-			want:    `docs/roadmap/backlog/a.md: missing required field "depends_on"`,
+			want:    `docs/roadmap/backlog/a.md: parse: missing required field "depends_on"`,
 		},
 		{
 			name:    "unknown field",
 			file:    "docs/roadmap/backlog/a.md",
 			content: "---\nid: a\ntitle: t\npriority: high\ndepends_on: []\nowner: me\n---\n",
-			want:    `docs/roadmap/backlog/a.md: unknown fields "owner"`,
+			want:    `docs/roadmap/backlog/a.md: parse: unknown fields "owner"`,
 		},
 		{
 			name:    "pattern violation",
 			file:    "docs/roadmap/backlog/Bad_ID.md",
 			content: task("Bad_ID", "t", "high", "[]"),
-			want:    `docs/roadmap/backlog/Bad_ID.md: id "Bad_ID" does not match pattern ^[a-z0-9]+(-[a-z0-9]+)*$`,
+			want:    `docs/roadmap/backlog/Bad_ID.md: parse: id "Bad_ID" does not match required pattern ^[a-z0-9]+(-[a-z0-9]+)*$`,
 		},
 		{
 			name:    "enum violation",
 			file:    "docs/roadmap/backlog/a.md",
 			content: task("a", "t", "urgent", "[]"),
-			want:    `docs/roadmap/backlog/a.md: priority "urgent" is invalid (expected high, medium, low)`,
+			want:    `docs/roadmap/backlog/a.md: parse: priority "urgent" is invalid (expected high, medium, or low)`,
 		},
 		{
 			name:    "filename mismatch",
 			file:    "docs/roadmap/backlog/other.md",
 			content: task("a", "t", "high", "[]"),
-			want:    `docs/roadmap/backlog/other.md: filename "other.md" does not match id "a"`,
+			want:    `docs/roadmap/backlog/other.md: parse: filename "other.md" does not match id "a"`,
 		},
 		{
 			name:    "null value",
 			file:    "docs/roadmap/backlog/a.md",
 			content: "---\nid: a\ntitle:\npriority: high\ndepends_on: []\n---\n",
-			want:    "docs/roadmap/backlog/a.md: title must not be null",
+			want:    "docs/roadmap/backlog/a.md: parse: title must not be null",
 		},
 		{
 			name:    "wrong scalar type",
 			file:    "docs/roadmap/backlog/a.md",
 			content: "---\nid: a\ntitle: 42\npriority: high\ndepends_on: []\n---\n",
-			want:    "docs/roadmap/backlog/a.md: title must be a string",
+			want:    "docs/roadmap/backlog/a.md: parse: title must be a string",
 		},
 		{
 			name:    "array expected",
 			file:    "docs/roadmap/backlog/a.md",
 			content: task("a", "t", "high", "first-task"),
-			want:    "docs/roadmap/backlog/a.md: depends_on must be an array of strings",
+			want:    "docs/roadmap/backlog/a.md: parse: depends_on must be an array",
 		},
 		{
 			name:    "missing reference",
 			file:    "docs/roadmap/backlog/a.md",
 			content: task("a", "t", "high", "[nope]"),
-			want:    `docs/roadmap/backlog/a.md: depends_on references missing id "nope"`,
+			want:    `docs/roadmap/backlog/a.md: validate: depends_on references missing id "nope"`,
 		},
 		{
 			name:    "self reference",
 			file:    "docs/roadmap/backlog/a.md",
 			content: task("a", "t", "high", "[a]"),
-			want:    `docs/roadmap/backlog/a.md: depends_on must not reference its own id "a"`,
+			want:    `docs/roadmap/backlog/a.md: validate: depends_on must not reference its own id "a"`,
 		},
 	}
 
@@ -178,8 +178,8 @@ func TestRunDuplicateID(t *testing.T) {
 		"docs/roadmap/theme/tasks/a.md": task("a", "t", "high", "[]"),
 	})
 	want := []string{
-		`docs/roadmap/backlog/a.md: duplicate id "a" (also used in docs/roadmap/theme/tasks/a.md)`,
-		`docs/roadmap/theme/tasks/a.md: duplicate id "a" (also used in docs/roadmap/backlog/a.md)`,
+		`docs/roadmap/backlog/a.md: validate: duplicate id "a" (also used in docs/roadmap/theme/tasks/a.md)`,
+		`docs/roadmap/theme/tasks/a.md: validate: duplicate id "a" (also used in docs/roadmap/backlog/a.md)`,
 	}
 	assertIssues(t, issues, want)
 }
@@ -190,8 +190,8 @@ func TestRunDependencyCycle(t *testing.T) {
 		"docs/roadmap/backlog/b.md": task("b", "t", "high", "[a]"),
 	})
 	want := []string{
-		"docs/roadmap/backlog/a.md: depends_on is part of a dependency cycle: a -> b -> a",
-		"docs/roadmap/backlog/b.md: depends_on is part of a dependency cycle: a -> b -> a",
+		"docs/roadmap/backlog/a.md: validate: depends_on is part of a dependency cycle: a -> b -> a",
+		"docs/roadmap/backlog/b.md: validate: depends_on is part of a dependency cycle: a -> b -> a",
 	}
 	assertIssues(t, issues, want)
 }

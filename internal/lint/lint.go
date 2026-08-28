@@ -148,12 +148,19 @@ func lintRule(root string, rule config.Rule, files []string) ([]Issue, error) {
 
 		fields, err := frontmatter.ParseFile(string(data))
 		if err != nil {
-			issues = append(issues, Issue{File: file, Message: err.Error()})
+			issues = append(issues, Issue{File: file, Message: "parse: " + err.Error()})
 			continue
 		}
 
+		// A file is reported by its first problem only, and is left out of the
+		// checks that span files.
 		doc, docIssues := lintDocument(rule, file, fields)
-		issues = append(issues, docIssues...)
+		if len(docIssues) > 0 {
+			issue := docIssues[0]
+			issue.Message = "parse: " + issue.Message
+			issues = append(issues, issue)
+			continue
+		}
 		docs = append(docs, doc)
 	}
 
@@ -184,12 +191,15 @@ func lintDocument(rule config.Rule, file string, fields map[string]yaml.Node) (d
 	}
 
 	for _, name := range rule.FieldNames() {
+		if _, present := fields[name]; !present && rule.Fields[name].Required {
+			issues = append(issues, Issue{File: file, Message: fmt.Sprintf("missing required field %q", name)})
+		}
+	}
+
+	for _, name := range rule.FieldNames() {
 		field := rule.Fields[name]
 		node, present := fields[name]
 		if !present {
-			if field.Required {
-				issues = append(issues, Issue{File: file, Message: fmt.Sprintf("missing required field %q", name)})
-			}
 			continue
 		}
 
@@ -200,16 +210,16 @@ func lintDocument(rule config.Rule, file string, fields map[string]yaml.Node) (d
 				issues = append(issues, Issue{File: file, Message: err.Error()})
 				continue
 			}
-			issues = append(issues, checkString(file, name, field, value)...)
+			issues = append(issues, checkString(file, name, field, value, false)...)
 			doc.values[name] = value
 		case config.TypeStringArray:
-			values, err := sequenceValues(node, name)
+			values, err := sequenceValues(node, name, field)
 			if err != nil {
 				issues = append(issues, Issue{File: file, Message: err.Error()})
 				continue
 			}
 			for _, value := range values {
-				issues = append(issues, checkString(file, name, field, value)...)
+				issues = append(issues, checkString(file, name, field, value, true)...)
 			}
 			doc.lists[name] = values
 		}
@@ -230,21 +240,38 @@ func lintDocument(rule config.Rule, file string, fields map[string]yaml.Node) (d
 	return doc, issues
 }
 
-func checkString(file, name string, field config.Field, value string) []Issue {
+func checkString(file, name string, field config.Field, value string, item bool) []Issue {
 	var issues []Issue
 	if re := field.Regexp(); re != nil && !re.MatchString(value) {
+		subject := name
+		if item {
+			subject = name + " item"
+		}
 		issues = append(issues, Issue{
 			File:    file,
-			Message: fmt.Sprintf("%s %q does not match pattern %s", name, value, field.Pattern),
+			Message: fmt.Sprintf("%s %q does not match required pattern %s", subject, value, field.Pattern),
 		})
 	}
 	if len(field.Enum) > 0 && !contains(field.Enum, value) {
 		issues = append(issues, Issue{
 			File:    file,
-			Message: fmt.Sprintf("%s %q is invalid (expected %s)", name, value, strings.Join(field.Enum, ", ")),
+			Message: fmt.Sprintf("%s %q is invalid (expected %s)", name, value, joinOr(field.Enum)),
 		})
 	}
 	return issues
+}
+
+func joinOr(values []string) string {
+	switch len(values) {
+	case 0:
+		return ""
+	case 1:
+		return values[0]
+	case 2:
+		return values[0] + " or " + values[1]
+	default:
+		return strings.Join(values[:len(values)-1], ", ") + ", or " + values[len(values)-1]
+	}
 }
 
 func lintUnique(rule config.Rule, docs []document) []Issue {
@@ -267,7 +294,7 @@ func lintUnique(rule config.Rule, docs []document) []Issue {
 			for _, file := range files {
 				issues = append(issues, Issue{
 					File:    file,
-					Message: fmt.Sprintf("duplicate %s %q (also used in %s)", name, value, strings.Join(others(files, file), ", ")),
+					Message: fmt.Sprintf("validate: duplicate %s %q (also used in %s)", name, value, strings.Join(others(files, file), ", ")),
 				})
 			}
 		}
@@ -297,7 +324,7 @@ func lintReferences(rule config.Rule, docs []document) []Issue {
 					if !field.SelfAllowed {
 						issues = append(issues, Issue{
 							File:    doc.path,
-							Message: fmt.Sprintf("%s must not reference its own %s %q", name, field.References, ref),
+							Message: fmt.Sprintf("validate: %s must not reference its own %s %q", name, field.References, ref),
 						})
 					}
 					continue
@@ -305,7 +332,7 @@ func lintReferences(rule config.Rule, docs []document) []Issue {
 				if _, ok := known[ref]; !ok {
 					issues = append(issues, Issue{
 						File:    doc.path,
-						Message: fmt.Sprintf("%s references missing %s %q", name, field.References, ref),
+						Message: fmt.Sprintf("validate: %s references missing %s %q", name, field.References, ref),
 					})
 				}
 			}
@@ -390,7 +417,7 @@ func lintCycles(name, refField string, docs []document) []Issue {
 		if cycle, ok := inCycle[id]; ok {
 			issues = append(issues, Issue{
 				File:    pathOf[id],
-				Message: fmt.Sprintf("%s is part of a dependency cycle: %s", name, cycle),
+				Message: fmt.Sprintf("validate: %s is part of a dependency cycle: %s", name, cycle),
 			})
 		}
 	}
@@ -410,14 +437,18 @@ func scalarValue(node yaml.Node, name string) (string, error) {
 	return node.Value, nil
 }
 
-func sequenceValues(node yaml.Node, name string) ([]string, error) {
+func sequenceValues(node yaml.Node, name string, field config.Field) ([]string, error) {
 	if node.Kind != yaml.SequenceNode {
-		return nil, fmt.Errorf("%s must be an array of strings", name)
+		return nil, fmt.Errorf("%s must be an array", name)
+	}
+	element := "strings"
+	if field.References != "" {
+		element = field.References + " strings"
 	}
 	values := make([]string, 0, len(node.Content))
 	for _, item := range node.Content {
 		if item.Kind != yaml.ScalarNode || item.Tag != "!!str" || item.Value == "" {
-			return nil, fmt.Errorf("%s must be an array of non-empty strings", name)
+			return nil, fmt.Errorf("%s must be an array of %s", name, element)
 		}
 		values = append(values, item.Value)
 	}

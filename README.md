@@ -8,8 +8,8 @@ Markdown の YAML front-matter を、設定ファイルに書いたルールで�
 
 ```console
 $ go run github.com/syou6162/docs-lint/cmd/docs-lint@latest
-docs/roadmap/backlog/slim-slack-server.md: missing required field "priority"
-docs/roadmap/backlog/typed-errors.md: depends_on references missing id "slack-auth"
+docs/roadmap/backlog/slim-slack-server.md: parse: missing required field "priority"
+docs/roadmap/backlog/typed-errors.md: validate: depends_on references missing id "slack-auth"
 ```
 
 ```
