@@ -261,6 +261,15 @@ func checkString(file, name string, field config.Field, value string, item bool)
 	return issues
 }
 
+// qualify prefixes a field name with what the rule calls one of its documents,
+// so that references read as "missing task id" rather than "missing id".
+func qualify(itemName, field string) string {
+	if itemName == "" {
+		return field
+	}
+	return itemName + " " + field
+}
+
 func joinOr(values []string) string {
 	switch len(values) {
 	case 0:
@@ -332,7 +341,7 @@ func lintReferences(rule config.Rule, docs []document) []Issue {
 				if _, ok := known[ref]; !ok {
 					issues = append(issues, Issue{
 						File:    doc.path,
-						Message: fmt.Sprintf("validate: %s references missing %s %q", name, field.References, ref),
+						Message: fmt.Sprintf("validate: %s references missing %s %q", name, qualify(rule.ItemName, field.References), ref),
 					})
 				}
 			}

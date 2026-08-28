@@ -32,6 +32,7 @@ type Rule struct {
 	Include            []string         `yaml:"include"`
 	Exclude            []string         `yaml:"exclude"`
 	FilenameField      string           `yaml:"filename_field"`
+	ItemName           string           `yaml:"item_name"`
 	AllowUnknownFields bool             `yaml:"allow_unknown_fields"`
 	Fields             map[string]Field `yaml:"fields"`
 

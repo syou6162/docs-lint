@@ -3,6 +3,7 @@ package lint
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/syou6162/docs-lint/internal/config"
@@ -36,6 +37,17 @@ rules:
         references: id
         acyclic: true
 `
+
+func TestRunItemNameInReferenceMessage(t *testing.T) {
+	cfg := strings.Replace(roadmapConfig, "    filename_field: id\n", "    filename_field: id\n    item_name: task\n", 1)
+	issues := run(t, cfg, map[string]string{
+		"docs/roadmap/backlog/a.md": task("a", "t", "high", "[nope]"),
+	})
+	want := `docs/roadmap/backlog/a.md: validate: depends_on references missing task id "nope"`
+	if len(issues) != 1 || issues[0].String() != want {
+		t.Errorf("Run() issues = %v, want [%s]", issues, want)
+	}
+}
 
 func writeFiles(t *testing.T, files map[string]string) string {
 	t.Helper()

@@ -9,7 +9,7 @@ Markdown の YAML front-matter を、設定ファイルに書いたルールで�
 ```console
 $ go run github.com/syou6162/docs-lint/cmd/docs-lint@latest
 docs/roadmap/backlog/slim-slack-server.md: parse: missing required field "priority"
-docs/roadmap/backlog/typed-errors.md: validate: depends_on references missing id "slack-auth"
+docs/roadmap/backlog/typed-errors.md: validate: depends_on references missing task id "slack-auth"
 ```
 
 ```
@@ -35,6 +35,7 @@ rules:
       - "**/AGENTS.md"
       - "**/overview.md"
     filename_field: id
+    item_name: task
     fields:
       id:
         type: string
@@ -67,6 +68,7 @@ rules:
 | `include` | 必須 | 検査対象のパターン。`**` を含む glob をルートからの相対パスに対して照合する |
 | `exclude` | `[]` | `include` から除外するパターン |
 | `filename_field` | なし | ファイル名（`.md` を除く）が一致していなければならないフィールド名 |
+| `item_name` | なし | このルールが対象とする文書 1 件の呼び名。`references` のエラー文言に使う（例: `task` なら `references missing task id`） |
 | `allow_unknown_fields` | `false` | `fields` に無い front-matter を許すかどうか |
 | `fields` | 必須 | フィールド名 → 検査内容 |
 
