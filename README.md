@@ -1,24 +1,25 @@
 # docs-lint
 
-roadmap のタスクファイル（`docs/roadmap/**/*.md`）の YAML front-matter を検査する CLI。
+roadmap のタスクファイル（`docs/roadmap/**/*.md`）を検査し、依存関係が解消済みのタスクを一覧する CLI。
 
-`syou6162/times-agent-talk` の `roadmap validate` をそのまま切り出したもの。
-
-## 使い方
+## インストールと使い方
 
 ```console
-$ go run github.com/syou6162/docs-lint/cmd/docs-lint@latest
-docs/roadmap/backlog/slim-slack-server.md: parse: missing required field "priority"
-docs/roadmap/backlog/typed-errors.md: validate: depends_on references missing task id "slack-auth"
+$ go install github.com/syou6162/docs-lint/cmd/docs-lint@latest
+$ docs-lint validate
 ```
 
-```
-usage: docs-lint [dir]
+引数を省略すると `docs/roadmap` を検査します。違反を `path: message` の形式で標準出力に並べ、1 件以上あれば exit 1。
 
-validate roadmap task files (default dir: docs/roadmap)
+```
+usage: docs-lint <subcommand> [args]
+
+subcommands:
+  validate [dir]  validate roadmap task files
+  tasks [dir]     list available roadmap tasks
 ```
 
-違反を `path: message` の形式で標準出力に並べ、1 件以上あれば exit 1。
+`tasks` サブコマンドは、依存が解消済みのタスクだけを一覧します。`--priority`、`--type`、`--sort`、`--json` で絞り込み・並び順・出力形式を指定できます。
 
 ## 検査内容
 
@@ -46,5 +47,6 @@ depends_on: [typed-errors]
 - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
   with:
     go-version: stable
-- run: go run github.com/syou6162/docs-lint/cmd/docs-lint@latest
+- run: go install github.com/syou6162/docs-lint/cmd/docs-lint@latest
+- run: docs-lint validate
 ```
