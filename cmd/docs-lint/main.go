@@ -56,7 +56,7 @@ func runTasks(args []string) {
 	sortBy := fs.String("sort", "priority", "sort by priority or type")
 	jsonOut := fs.Bool("json", false, "output as JSON")
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "usage: roadmap tasks [flags] [dir]\n\nflags:\n")
+		fmt.Fprintf(os.Stderr, "usage: docs-lint tasks [flags] [dir]\n\nflags:\n")
 		fs.PrintDefaults()
 	}
 
