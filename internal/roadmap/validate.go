@@ -21,10 +21,21 @@ var validPriorities = map[string]struct{}{
 	"low":    {},
 }
 
+var validDecisionScopes = map[string]struct{}{
+	"ready":          {},
+	"implementation": {},
+	"design":         {},
+}
+
 // Issue is a single validation problem found in a roadmap task file.
 type Issue struct {
 	File    string
 	Message string
+}
+
+// ValidateOptions controls optional roadmap validation requirements.
+type ValidateOptions struct {
+	RequireDecisionScope bool
 }
 
 func (i Issue) String() string {
@@ -33,7 +44,12 @@ func (i Issue) String() string {
 
 // ValidateDir validates all roadmap task files under dir.
 func ValidateDir(dir string) ([]Issue, error) {
-	tasks, issues, err := LoadTasks(dir)
+	return ValidateDirWithOptions(dir, ValidateOptions{})
+}
+
+// ValidateDirWithOptions validates all roadmap task files under dir with options.
+func ValidateDirWithOptions(dir string, options ValidateOptions) ([]Issue, error) {
+	tasks, issues, err := loadTasks(dir, options)
 	if err != nil {
 		return nil, err
 	}
@@ -43,6 +59,10 @@ func ValidateDir(dir string) ([]Issue, error) {
 
 // LoadTasks reads all roadmap task files under dir.
 func LoadTasks(dir string) ([]Task, []Issue, error) {
+	return loadTasks(dir, ValidateOptions{})
+}
+
+func loadTasks(dir string, options ValidateOptions) ([]Task, []Issue, error) {
 	var tasks []Task
 	var issues []Issue
 
@@ -60,7 +80,7 @@ func LoadTasks(dir string) ([]Task, []Issue, error) {
 			return nil
 		}
 
-		task, err := parseTaskFile(path)
+		task, err := parseTaskFileWithOptions(path, options)
 		if err != nil {
 			issues = append(issues, Issue{File: path, Message: "parse: " + err.Error()})
 			return nil

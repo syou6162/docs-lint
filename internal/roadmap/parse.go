@@ -14,11 +14,12 @@ import (
 var idPattern = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 
 var allowedFrontMatterFields = map[string]struct{}{
-	"id":         {},
-	"title":      {},
-	"type":       {},
-	"priority":   {},
-	"depends_on": {},
+	"id":             {},
+	"title":          {},
+	"type":           {},
+	"priority":       {},
+	"decision_scope": {},
+	"depends_on":     {},
 }
 
 func parseFrontMatterYAML(yamlContent string) (map[string]yaml.Node, error) {
@@ -48,6 +49,10 @@ func parseFrontMatterYAML(yamlContent string) (map[string]yaml.Node, error) {
 }
 
 func parseTaskFile(path string) (Task, error) {
+	return parseTaskFileWithOptions(path, ValidateOptions{})
+}
+
+func parseTaskFileWithOptions(path string, options ValidateOptions) (Task, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return Task{}, err
@@ -63,7 +68,7 @@ func parseTaskFile(path string) (Task, error) {
 		return Task{}, err
 	}
 
-	if err := validateFrontMatterFields(fields); err != nil {
+	if err := validateFrontMatterFields(fields, options.RequireDecisionScope); err != nil {
 		return Task{}, err
 	}
 
@@ -96,6 +101,17 @@ func parseTaskFile(path string) (Task, error) {
 		return Task{}, fmt.Errorf(`priority %q is invalid (expected high, medium, or low)`, priority)
 	}
 
+	decisionScope := ""
+	if node, ok := fields["decision_scope"]; ok {
+		decisionScope, err = parseScalarField(node, "decision_scope")
+		if err != nil {
+			return Task{}, err
+		}
+		if _, ok := validDecisionScopes[decisionScope]; !ok {
+			return Task{}, fmt.Errorf(`decision_scope %q is invalid (expected ready, implementation, or design)`, decisionScope)
+		}
+	}
+
 	dependsOn, err := parseDependsOn(fields["depends_on"])
 	if err != nil {
 		return Task{}, err
@@ -107,13 +123,14 @@ func parseTaskFile(path string) (Task, error) {
 	}
 
 	return Task{
-		Path:      path,
-		FileID:    fileID,
-		ID:        id,
-		Title:     title,
-		Type:      typ,
-		Priority:  priority,
-		DependsOn: dependsOn,
+		Path:          path,
+		FileID:        fileID,
+		ID:            id,
+		Title:         title,
+		Type:          typ,
+		Priority:      priority,
+		DecisionScope: decisionScope,
+		DependsOn:     dependsOn,
 	}, nil
 }
 
@@ -140,7 +157,7 @@ func extractFrontMatter(content string) (string, error) {
 	return rest[:end], nil
 }
 
-func validateFrontMatterFields(fields map[string]yaml.Node) error {
+func validateFrontMatterFields(fields map[string]yaml.Node, requireDecisionScope bool) error {
 	var unknown []string
 	for key := range fields {
 		if _, ok := allowedFrontMatterFields[key]; !ok {
@@ -152,7 +169,11 @@ func validateFrontMatterFields(fields map[string]yaml.Node) error {
 		return fmt.Errorf("unknown fields %s", quoteFieldNames(unknown))
 	}
 
-	for _, key := range []string{"id", "title", "type", "priority", "depends_on"} {
+	requiredFields := []string{"id", "title", "type", "priority", "depends_on"}
+	if requireDecisionScope {
+		requiredFields = append(requiredFields, "decision_scope")
+	}
+	for _, key := range requiredFields {
 		if _, ok := fields[key]; !ok {
 			return fmt.Errorf("missing required field %q", key)
 		}

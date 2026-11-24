@@ -1,6 +1,7 @@
 package roadmap_test
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -16,6 +17,46 @@ func TestValidateDirValid(t *testing.T) {
 	}
 	if len(issues) != 0 {
 		t.Fatalf("issues = %#v, want none", issues)
+	}
+}
+
+func TestValidateDirDecisionScopeRequirement(t *testing.T) {
+	dir := t.TempDir()
+	content := "---\nid: task-without-decision-scope\ntitle: example\ntype: feature\npriority: high\ndepends_on: []\n---\n"
+	if err := os.WriteFile(filepath.Join(dir, "task-without-decision-scope.md"), []byte(content), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	tests := []struct {
+		name                  string
+		options               roadmap.ValidateOptions
+		wantMissingScopeIssue bool
+	}{
+		{name: "optional by default"},
+		{
+			name:                  "required when configured",
+			options:               roadmap.ValidateOptions{RequireDecisionScope: true},
+			wantMissingScopeIssue: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			issues, err := roadmap.ValidateDirWithOptions(dir, tt.options)
+			if err != nil {
+				t.Fatalf("ValidateDirWithOptions() error = %v", err)
+			}
+			joined := joinIssues(issues)
+			if tt.wantMissingScopeIssue {
+				if !strings.Contains(joined, `missing required field "decision_scope"`) {
+					t.Fatalf("issues = %q, want missing decision_scope", joined)
+				}
+				return
+			}
+			if len(issues) != 0 {
+				t.Fatalf("issues = %#v, want none", issues)
+			}
+		})
 	}
 }
 
