@@ -40,6 +40,9 @@ func TestRunValidateDecisionScopeFlag(t *testing.T) {
 	if code := runValidate([]string{"--require-decision-scope", dir}); code != 1 {
 		t.Fatalf("runValidate() with required flag = %d, want 1", code)
 	}
+	if code := runValidate([]string{dir, "--require-decision-scope"}); code != 2 {
+		t.Fatalf("runValidate() with flag after directory = %d, want usage error 2", code)
+	}
 }
 
 func TestMain(m *testing.M) {

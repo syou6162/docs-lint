@@ -41,6 +41,11 @@ func runValidate(args []string) int {
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
+	if fs.NArg() > 1 {
+		fmt.Fprintf(os.Stderr, "docs-lint validate: unexpected argument %q\n", fs.Arg(1))
+		fs.Usage()
+		return 2
+	}
 
 	dir := "docs/roadmap"
 	if fs.NArg() > 0 {
