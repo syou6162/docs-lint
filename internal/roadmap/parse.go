@@ -14,11 +14,12 @@ import (
 var idPattern = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 
 var allowedFrontMatterFields = map[string]struct{}{
-	"id":         {},
-	"title":      {},
-	"type":       {},
-	"priority":   {},
-	"depends_on": {},
+	"id":             {},
+	"title":          {},
+	"type":           {},
+	"priority":       {},
+	"decision_scope": {},
+	"depends_on":     {},
 }
 
 func parseFrontMatterYAML(yamlContent string) (map[string]yaml.Node, error) {
@@ -96,6 +97,17 @@ func parseTaskFile(path string) (Task, error) {
 		return Task{}, fmt.Errorf(`priority %q is invalid (expected high, medium, or low)`, priority)
 	}
 
+	decisionScope := ""
+	if node, ok := fields["decision_scope"]; ok {
+		decisionScope, err = parseScalarField(node, "decision_scope")
+		if err != nil {
+			return Task{}, err
+		}
+		if _, ok := validDecisionScopes[decisionScope]; !ok {
+			return Task{}, fmt.Errorf(`decision_scope %q is invalid (expected ready, implementation, or design)`, decisionScope)
+		}
+	}
+
 	dependsOn, err := parseDependsOn(fields["depends_on"])
 	if err != nil {
 		return Task{}, err
@@ -107,13 +119,14 @@ func parseTaskFile(path string) (Task, error) {
 	}
 
 	return Task{
-		Path:      path,
-		FileID:    fileID,
-		ID:        id,
-		Title:     title,
-		Type:      typ,
-		Priority:  priority,
-		DependsOn: dependsOn,
+		Path:          path,
+		FileID:        fileID,
+		ID:            id,
+		Title:         title,
+		Type:          typ,
+		Priority:      priority,
+		DecisionScope: decisionScope,
+		DependsOn:     dependsOn,
 	}, nil
 }
 

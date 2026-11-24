@@ -21,6 +21,12 @@ var validPriorities = map[string]struct{}{
 	"low":    {},
 }
 
+var validDecisionScopes = map[string]struct{}{
+	"ready":          {},
+	"implementation": {},
+	"design":         {},
+}
+
 // Issue is a single validation problem found in a roadmap task file.
 type Issue struct {
 	File    string

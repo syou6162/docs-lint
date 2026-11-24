@@ -42,6 +42,20 @@ foo: bar
 			wantContains: []string{`unknown fields "foo"`},
 		},
 		{
+			name: "invalid decision scope",
+			content: `---
+id: task-decision-scope
+title: example
+type: feature
+priority: high
+depends_on: []
+decision_scope: unresolved
+---
+`,
+			filename:     "task-decision-scope.md",
+			wantContains: []string{`decision_scope "unresolved" is invalid`},
+		},
+		{
 			name: "unknown fields sorted",
 			content: `---
 id: task-b2
@@ -324,5 +338,46 @@ depends_on: []
 	}
 	if task.Title != "   " {
 		t.Fatalf("task.Title = %q, want %q", task.Title, "   ")
+	}
+}
+
+func TestParseTaskFileAcceptsOptionalDecisionScope(t *testing.T) {
+	tests := []struct {
+		name          string
+		decisionScope string
+	}{
+		{name: "omitted"},
+		{name: "ready", decisionScope: "ready"},
+		{name: "implementation", decisionScope: "implementation"},
+		{name: "design", decisionScope: "design"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			content := `---
+id: decision-scope
+title: example
+type: feature
+priority: high
+depends_on: []
+`
+			if tt.decisionScope != "" {
+				content += "decision_scope: " + tt.decisionScope + "\n"
+			}
+			content += "---\n"
+
+			path := filepath.Join(t.TempDir(), "decision-scope.md")
+			if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+				t.Fatalf("WriteFile() error = %v", err)
+			}
+
+			task, err := parseTaskFile(path)
+			if err != nil {
+				t.Fatalf("parseTaskFile() error = %v, want success", err)
+			}
+			if task.DecisionScope != tt.decisionScope {
+				t.Fatalf("task.DecisionScope = %q, want %q", task.DecisionScope, tt.decisionScope)
+			}
+		})
 	}
 }

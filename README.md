@@ -31,11 +31,12 @@ id: slim-slack-server
 title: Slack server を薄くする
 type: refactoring
 priority: high
+decision_scope: ready
 depends_on: [typed-errors]
 ---
 ```
 
-- 必須フィールドは `id` / `title` / `type` / `priority` / `depends_on`。これ以外のフィールドはエラー
+- 必須フィールドは `id` / `title` / `type` / `priority` / `depends_on`。`decision_scope` は任意で、指定する場合は `ready` / `implementation` / `design` のいずれか。これら以外のフィールドはエラー
 - `id` は `^[a-z0-9]+(-[a-z0-9]+)*$` に一致し、ファイル名（`.md` を除く）と一致すること。全ファイルで一意であること
 - `type` は `bug` / `refactoring` / `documentation` / `test` / `feature` のいずれか
 - `priority` は `high` / `medium` / `low` のいずれか
