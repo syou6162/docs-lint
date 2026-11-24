@@ -45,6 +45,12 @@ func TestRunValidateDecisionScopeFlag(t *testing.T) {
 	}
 }
 
+func TestRunValidateHelpSucceeds(t *testing.T) {
+	if code := runValidate([]string{"--help"}); code != 0 {
+		t.Fatalf("runValidate() with --help = %d, want 0", code)
+	}
+}
+
 func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
