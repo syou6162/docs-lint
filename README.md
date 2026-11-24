@@ -7,15 +7,16 @@ roadmap のタスクファイル（`docs/roadmap/**/*.md`）を検査し、依�
 ```console
 $ go install github.com/syou6162/docs-lint/cmd/docs-lint@latest
 $ docs-lint validate
+$ docs-lint validate --require-decision-scope
 ```
 
-引数を省略すると `docs/roadmap` を検査します。違反を `path: message` の形式で標準出力に並べ、1 件以上あれば exit 1。
+引数を省略すると `docs/roadmap` を検査します。違反を `path: message` の形式で標準出力に並べ、1 件以上あれば exit 1。`decision_scope` は通常任意ですが、指定された場合はどの実行モードでも有効値を検査します。リポジトリで必須にする場合は `--require-decision-scope` を指定します。
 
 ```
 usage: docs-lint <subcommand> [args]
 
 subcommands:
-  validate [dir]  validate roadmap task files
+  validate [flags] [dir]  validate roadmap task files
   tasks [dir]     list available roadmap tasks
 ```
 
@@ -36,7 +37,7 @@ depends_on: [typed-errors]
 ---
 ```
 
-- 必須フィールドは `id` / `title` / `type` / `priority` / `depends_on`。`decision_scope` は任意で、指定する場合は `ready` / `implementation` / `design` のいずれか。これら以外のフィールドはエラー
+- 必須フィールドは `id` / `title` / `type` / `priority` / `depends_on`。`decision_scope` は通常任意ですが、指定する場合は `ready` / `implementation` / `design` のいずれか。`validate --require-decision-scope` では `decision_scope` も必須です。これら以外のフィールドはエラー
 - `id` は `^[a-z0-9]+(-[a-z0-9]+)*$` に一致し、ファイル名（`.md` を除く）と一致すること。全ファイルで一意であること
 - `type` は `bug` / `refactoring` / `documentation` / `test` / `feature` のいずれか
 - `priority` は `high` / `medium` / `low` のいずれか
@@ -49,5 +50,5 @@ depends_on: [typed-errors]
   with:
     go-version: stable
 - run: go install github.com/syou6162/docs-lint/cmd/docs-lint@latest
-- run: docs-lint validate
+- run: docs-lint validate --require-decision-scope  # omit the flag when decision_scope is optional
 ```

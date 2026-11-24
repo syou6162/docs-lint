@@ -56,6 +56,18 @@ decision_scope: unresolved
 			wantContains: []string{`decision_scope "unresolved" is invalid`},
 		},
 		{
+			name:         "empty decision scope",
+			content:      "---\nid: task-decision-scope-empty\ntitle: example\ntype: feature\npriority: high\ndepends_on: []\ndecision_scope: \"\"\n---\n",
+			filename:     "task-decision-scope-empty.md",
+			wantContains: []string{"decision_scope must be a non-empty string"},
+		},
+		{
+			name:         "null decision scope",
+			content:      "---\nid: task-decision-scope-null\ntitle: example\ntype: feature\npriority: high\ndepends_on: []\ndecision_scope: null\n---\n",
+			filename:     "task-decision-scope-null.md",
+			wantContains: []string{"decision_scope must not be null"},
+		},
+		{
 			name: "unknown fields sorted",
 			content: `---
 id: task-b2

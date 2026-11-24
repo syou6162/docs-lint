@@ -27,6 +27,21 @@ func TestRunTasksRejectsUnknownSortFlag(t *testing.T) {
 	}
 }
 
+func TestRunValidateDecisionScopeFlag(t *testing.T) {
+	dir := t.TempDir()
+	content := "---\nid: task-without-decision-scope\ntitle: example\ntype: feature\npriority: high\ndepends_on: []\n---\n"
+	if err := os.WriteFile(filepath.Join(dir, "task-without-decision-scope.md"), []byte(content), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	if code := runValidate([]string{dir}); code != 0 {
+		t.Fatalf("runValidate() without required flag = %d, want 0", code)
+	}
+	if code := runValidate([]string{"--require-decision-scope", dir}); code != 1 {
+		t.Fatalf("runValidate() with required flag = %d, want 1", code)
+	}
+}
+
 func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }

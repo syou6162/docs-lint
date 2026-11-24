@@ -20,7 +20,9 @@ func main() {
 
 	switch os.Args[1] {
 	case "validate":
-		runValidate(os.Args[2:])
+		if code := runValidate(os.Args[2:]); code != 0 {
+			os.Exit(code)
+		}
 	case "tasks":
 		runTasks(os.Args[2:])
 	default:
@@ -29,24 +31,37 @@ func main() {
 	}
 }
 
-func runValidate(args []string) {
-	dir := "docs/roadmap"
-	if len(args) > 0 {
-		dir = args[0]
+func runValidate(args []string) int {
+	fs := flag.NewFlagSet("validate", flag.ContinueOnError)
+	requireDecisionScope := fs.Bool("require-decision-scope", false, "require decision_scope in task front-matter")
+	fs.Usage = func() {
+		fmt.Fprintf(os.Stderr, "usage: docs-lint validate [flags] [dir]\n\nflags:\n")
+		fs.PrintDefaults()
+	}
+	if err := fs.Parse(args); err != nil {
+		return 2
 	}
 
-	issues, err := roadmap.ValidateDir(dir)
+	dir := "docs/roadmap"
+	if fs.NArg() > 0 {
+		dir = fs.Arg(0)
+	}
+
+	issues, err := roadmap.ValidateDirWithOptions(dir, roadmap.ValidateOptions{
+		RequireDecisionScope: *requireDecisionScope,
+	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "docs-lint: %v\n", err)
-		os.Exit(1)
+		return 1
 	}
 
 	for _, issue := range issues {
 		fmt.Println(issue)
 	}
 	if len(issues) > 0 {
-		os.Exit(1)
+		return 1
 	}
+	return 0
 }
 
 func runTasks(args []string) {
